@@ -1,0 +1,197 @@
+openapi: 3.0.0
+info:
+  title: Silly Walk Grant Application Orchestrator
+  description: |
+    A secure backend API service for managing silly walk grant applications.
+
+    This API allows applicants to submit applications for silly walk grants,
+    check the status of their applications, and for administrators to
+    review and update application statuses.
+  version: 1.0.0
+  contact:
+    name: Ministry of Silly Walks
+servers:
+  - url: /api/v1
+    description: API Version 1
+paths:
+  /applications:
+    post:
+      summary: Submit a new silly walk application
+      description: |
+        Submit a new application for a silly walk grant.
+
+        This endpoint requires API key authentication via the X-API-Key header.
+
+        The silliness score will be calculated automatically based on:
+        - Base score: 10 points if description is longer than 20 characters
+        - Briefcase bonus: +5 points if application involves a briefcase
+        - Hopping bonus: +3 points for each mention of "hop" or "hopping" in the description (max 15)
+        - Twirltastic score: +2 points for each twirl, up to a maximum of 20 points
+        - Originality bonus: +7 points if the walk name is unique
+
+        The application status will be set to "PendingReview" initially.
+      operationId: createApplication
+      security:
+        - ApiKeyAuth: []
+      tags:
+        - applications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreate'
+            example:
+              applicant_name: John Cleese
+              walk_name: The Ministry Walk
+              description: A very silly walk involving high leg lifts and hopping
+              has_briefcase: true
+              involves_hopping: true
+              number_of_twirls: 3
+      responses:
+        '201':
+          description: Application successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResponse'
+              example:
+                id: 123e4567-e89b-12d3-a456-426614174000
+                applicant_name: John Cleese
+                walk_name: The Ministry Walk
+                description: A very silly walk involving high leg lifts and hopping
+                has_briefcase: true
+                involves_hopping: true
+                number_of_twirls: 3
+                silliness_score: 35
+                status: PendingReview
+                submission_timestamp: "2023-07-14T12:34:56.789Z"
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: Field cannot be empty or just whitespace
+        '401':
+          description: Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: API key is required
+        '403':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: Invalid API key
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: An error occurred while processing the application
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    ApplicationBase:
+      type: object
+      required:
+        - applicant_name
+        - walk_name
+        - description
+        - has_briefcase
+        - involves_hopping
+        - number_of_twirls
+      properties:
+        applicant_name:
+          type: string
+          description: Name of the applicant
+          minLength: 1
+          maxLength: 100
+          example: John Cleese
+        walk_name:
+          type: string
+          description: Name of the silly walk
+          minLength: 1
+          maxLength: 100
+          example: The Ministry Walk
+        description:
+          type: string
+          description: Description of the walk's silliness
+          minLength: 1
+          example: A very silly walk involving high leg lifts and hopping
+        has_briefcase:
+          type: boolean
+          description: Whether the walk involves a briefcase
+          example: true
+        involves_hopping:
+          type: boolean
+          description: Whether the walk involves hopping
+          example: true
+        number_of_twirls:
+          type: integer
+          description: Number of twirls in the walk
+          minimum: 0
+          example: 3
+
+    ApplicationCreate:
+      allOf:
+        - $ref: '#/components/schemas/ApplicationBase'
+
+    ApplicationResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApplicationBase'
+        - type: object
+          required:
+            - id
+            - silliness_score
+            - status
+            - submission_timestamp
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Unique identifier for the application
+              example: 123e4567-e89b-12d3-a456-426614174000
+            silliness_score:
+              type: integer
+              description: Calculated silliness score
+              example: 35
+            status:
+              type: string
+              description: Status of the application
+              example: PendingReview
+              enum:
+                - PendingReview
+                - UnderSillyCouncilReview
+                - ApprovedForFunding
+                - RegrettablyNotSillyEnough
+            submission_timestamp:
+              type: string
+              format: date-time
+              description: When the application was submitted
+              example: "2023-07-14T12:34:56.789Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: An error occurred
